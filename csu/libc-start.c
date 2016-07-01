@@ -22,6 +22,10 @@
 #include <ldsodefs.h>
 #include <exit-thread.h>
 
+#if HAVE_TUNABLES
+# include <elf/dl-tunables.h>
+#endif
+
 extern void __libc_init_first (int argc, char **argv, char **envp);
 
 extern int __libc_multiple_libcs;
@@ -183,6 +187,13 @@ LIBC_START_MAIN (int (*main) (int, char **, char ** MAIN_AUXVEC_DECL),
       DL_SYSDEP_OSCHECK (__libc_fatal);
     }
 # endif
+
+  /* Initialize very early so that tunables can use it.  */
+  __libc_init_secure ();
+
+#if HAVE_TUNABLES
+  __tunables_init (__environ);
+#endif
 
   /* Perform IREL{,A} relocations.  */
   apply_irel ();
