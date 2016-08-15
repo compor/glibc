@@ -22,12 +22,15 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <sys/mman.h>
 #include <libc-internal.h>
 #include <sysdep.h>
 #include <fcntl.h>
 
 #define TUNABLES_INTERNAL 1
 #include "dl-tunables.h"
+
+#define GLIBC_TUNABLES "GLIBC_TUNABLES"
 
 /* Compare environment names, bounded by the name hardcoded in glibc.  */
 static bool
@@ -42,6 +45,27 @@ is_name (const char *orig, const char *envname)
     return true;
   else
     return false;
+}
+
+static char *tunables_strdup (const char *in)
+{
+  size_t i = 0;
+
+  while (in[i++]);
+
+  char *out = __mmap (NULL, ALIGN_UP (i, __getpagesize ()),
+		      PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1,
+		      0);
+
+  if (out == MAP_FAILED)
+    return NULL;
+
+  i--;
+
+  while (i-- > 0)
+    out[i] = in[i];
+
+  return out;
 }
 
 static char **
@@ -208,6 +232,72 @@ tunable_initialize (tunable_t *cur, const char *strval)
     }
 }
 
+static void
+parse_tunables (char *tunestr)
+{
+  if (tunestr == NULL || *tunestr == '\0')
+    return;
+
+  char *p = tunestr;
+
+  while (true)
+    {
+      char *name = p;
+      size_t len = 0;
+
+      /* First, find where the name ends.  */
+      while (p[len] != '=' && p[len] != ':' && p[len] != '\0')
+	len++;
+
+      /* If we reach the end of the string before getting a valid name-value
+	 pair, bail out.  */
+      if (p[len] == '\0')
+	return;
+
+      /* We did not find a valid name-value pair before encountering the
+	 colon.  */
+      if (p[len]== ':')
+	{
+	  p += len + 1;
+	  continue;
+	}
+
+      p += len + 1;
+
+      char *value = p;
+      len = 0;
+
+      while (p[len] != ':' && p[len] != '\0')
+	len++;
+
+      char end = p[len];
+      p[len] = '\0';
+
+      /* Add the tunable if it exists.  */
+      for (size_t i = 0; i < sizeof (tunable_list) / sizeof (tunable_t); i++)
+	{
+	  tunable_t *cur = &tunable_list[i];
+
+	  /* If we are in a secure context (AT_SECURE) then ignore the tunable
+	     unless it is explicitly marked as secure.  Tunable values take
+	     precendence over their envvar aliases.  */
+	  if (__libc_enable_secure && !cur->is_secure)
+	    continue;
+
+	  if (is_name (cur->name, name))
+	    {
+	      tunable_initialize (cur, value);
+	      break;
+	    }
+	}
+
+      if (end == ':')
+	p += len + 1;
+      else
+	return;
+    }
+}
+
 /* Disable a tunable if it is set.  */
 static void
 disable_tunable (tunable_id_t id, char **envp)
@@ -216,6 +306,23 @@ disable_tunable (tunable_id_t id, char **envp)
 
   if (env_alias)
     tunables_unsetenv (envp, tunable_list[id].env_alias);
+
+  char *tunable = getenv (GLIBC_TUNABLES);
+  const char *cmp = tunable_list[id].name;
+  const size_t len = strlen (cmp);
+
+  while (tunable && *tunable != '\0' && *tunable != ':')
+    {
+      if (strncmp (tunable, cmp, len) == 0)
+	{
+	  tunable += len;
+	  /* Overwrite the = and the value with colons.  */
+	  while (*tunable != '\0' && *tunable != ':')
+	    *tunable++ = ':';
+	  break;
+	}
+      tunable++;
+    }
 }
 
 /* Disable the glibc.malloc.check tunable in SETUID/SETGID programs unless
@@ -246,6 +353,14 @@ __tunables_init (char **envp)
 
   while ((envp = get_next_env (envp, &envname, &len, &envval)) != NULL)
     {
+      if (is_name (GLIBC_TUNABLES, envname))
+	{
+	  char *val = tunables_strdup (envval);
+	  if (val != NULL)
+	    parse_tunables (val);
+	  continue;
+	}
+
       for (int i = 0; i < sizeof (tunable_list) / sizeof (tunable_t); i++)
 	{
 	  tunable_t *cur = &tunable_list[i];
