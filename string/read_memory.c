@@ -33,8 +33,9 @@
 
 void
 internal_function
-__glibc_read_memory(const void *s, size_t len)
+__internal_glibc_read_memory(const void *s, size_t len)
 {
   asm volatile ("");
 }
-libc_hidden_def (__glibc_read_memory)
+libc_hidden_def (__internal_glibc_read_memory)
+strong_alias (__internal_glibc_read_memory, __glibc_read_memory)

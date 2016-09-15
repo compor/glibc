@@ -99,9 +99,8 @@ libc_hidden_proto (memmem)
 extern __typeof (memmem) __memmem;
 libc_hidden_proto (__memmem)
 libc_hidden_proto (__ffs)
-extern void __glibc_read_memory (const void *s, size_t len)
-  __THROW __nonnull ((1)) __attribute_noinline__;
-libc_hidden_proto (__glibc_read_memory)
+extern __typeof (__glibc_read_memory) __internal_glibc_read_memory;
+libc_hidden_proto (__internal_glibc_read_memory)
 
 libc_hidden_builtin_proto (memchr)
 libc_hidden_builtin_proto (memcpy)

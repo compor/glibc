@@ -26,5 +26,5 @@ void
 explicit_bzero (void *s, size_t len)
 {
   memset (s, '\0', len);
-  __glibc_read_memory (s, len);
+  __internal_glibc_read_memory (s, len);
 }
