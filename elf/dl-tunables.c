@@ -30,7 +30,9 @@
 #define TUNABLES_INTERNAL 1
 #include "dl-tunables.h"
 
-#define GLIBC_TUNABLES "GLIBC_TUNABLES"
+#if TUNABLES_FRONTEND == TUNABLES_FRONTEND_valstring
+# define GLIBC_TUNABLES "GLIBC_TUNABLES"
+#endif
 
 /* Compare environment names, bounded by the name hardcoded in glibc.  */
 static bool
@@ -47,6 +49,7 @@ is_name (const char *orig, const char *envname)
     return false;
 }
 
+#if TUNABLES_FRONTEND == TUNABLES_FRONTEND_valstring
 static char *tunables_strdup (const char *in)
 {
   size_t i = 0;
@@ -67,6 +70,7 @@ static char *tunables_strdup (const char *in)
 
   return out;
 }
+#endif
 
 static char **
 get_next_env (char **envp, char **name, size_t *namelen, char **val)
@@ -232,6 +236,7 @@ tunable_initialize (tunable_t *cur, const char *strval)
     }
 }
 
+#if TUNABLES_FRONTEND == TUNABLES_FRONTEND_valstring
 static void
 parse_tunables (char *tunestr)
 {
@@ -297,6 +302,7 @@ parse_tunables (char *tunestr)
 	return;
     }
 }
+#endif
 
 /* Disable a tunable if it is set.  */
 static void
@@ -307,6 +313,7 @@ disable_tunable (tunable_id_t id, char **envp)
   if (env_alias)
     tunables_unsetenv (envp, tunable_list[id].env_alias);
 
+#if TUNABLES_FRONTEND == TUNABLES_FRONTEND_valstring
   char *tunable = getenv (GLIBC_TUNABLES);
   const char *cmp = tunable_list[id].name;
   const size_t len = strlen (cmp);
@@ -323,6 +330,7 @@ disable_tunable (tunable_id_t id, char **envp)
 	}
       tunable++;
     }
+#endif
 }
 
 /* Disable the glibc.malloc.check tunable in SETUID/SETGID programs unless
@@ -353,6 +361,7 @@ __tunables_init (char **envp)
 
   while ((envp = get_next_env (envp, &envname, &len, &envval)) != NULL)
     {
+#if TUNABLES_FRONTEND == TUNABLES_FRONTEND_valstring
       if (is_name (GLIBC_TUNABLES, envname))
 	{
 	  char *val = tunables_strdup (envval);
@@ -360,6 +369,7 @@ __tunables_init (char **envp)
 	    parse_tunables (val);
 	  continue;
 	}
+#endif
 
       for (int i = 0; i < sizeof (tunable_list) / sizeof (tunable_t); i++)
 	{
