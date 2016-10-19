@@ -40,6 +40,7 @@ routines :=								\
 	mkdir mkdirat							\
 	open open_2 open64 open64_2 openat openat_2 openat64 openat64_2	\
 	read write lseek lseek64 access euidaccess faccessat		\
+	access_noerrno							\
 	fcntl flock lockf lockf64					\
 	close dup dup2 dup3 pipe pipe2					\
 	creat creat64							\

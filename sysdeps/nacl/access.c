@@ -19,10 +19,22 @@
 #include <unistd.h>
 #include <nacl-interfaces.h>
 
+#ifndef __ACCESS
+# define __ACCESS __access
+#endif
+
+#ifndef NOERRNO
+# define DO_NACL_CALL NACL_CALL
+#else
+# define DO_NACL_CALL NACL_CALL_NOERRNO
+#endif
+
 /* Test for access to FILE.  */
 int
-__access (const char *file, int type)
+__ACCESS (const char *file, int type)
 {
-  return NACL_CALL (__nacl_irt_dev_filename.access (file, type), 0);
+  return DO_NACL_CALL (__nacl_irt_dev_filename.access (file, type), 0);
 }
+#ifndef NOERRNO
 weak_alias (__access, access)
+#endif

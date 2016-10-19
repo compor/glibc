@@ -22,9 +22,19 @@
 #include <hurd/lookup.h>
 #include <fcntl.h>
 
+#ifndef __ACCESS
+# define __ACCESS __access
+#endif
+
+#ifndef NOERRNO
+# define __HURD_FAIL(e) __hurd_fail (e)
+#else
+# define __HURD_FAIL(e) (e)
+#endif
+
 /* Test for access to FILE by our real user and group IDs.  */
 int
-__access (const char *file, int type)
+__ACCESS (const char *file, int type)
 {
   error_t err;
   file_t rcrdir, rcwdir, io;
@@ -120,13 +130,13 @@ __access (const char *file, int type)
   if (rcwdir != MACH_PORT_NULL)
     __mach_port_deallocate (__mach_task_self (), rcwdir);
   if (err)
-    return __hurd_fail (err);
+    return __HURD_FAIL (err);
 
   /* Find out what types of access we are allowed to this file.  */
   err = __file_check_access (io, &allowed);
   __mach_port_deallocate (__mach_task_self (), io);
   if (err)
-    return __hurd_fail (err);
+    return __HURD_FAIL (err);
 
   flags = 0;
   if (type & R_OK)
@@ -138,9 +148,11 @@ __access (const char *file, int type)
 
   if (flags & ~allowed)
     /* We are not allowed all the requested types of access.  */
-    return __hurd_fail (EACCES);
+    return __HURD_FAIL (EACCES);
 
   return 0;
 }
 
+#ifndef NOERRNO
 weak_alias (__access, access)
+#endif

@@ -1,4 +1,5 @@
-/* Copyright (C) 2011-2016 Free Software Foundation, Inc.
+/* Test for access to a file but do not set errno on error.
+   Copyright (C) 2016 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
    Contributed by Chris Metcalf <cmetcalf@tilera.com>, 2011.
 
@@ -23,26 +24,15 @@
 #include <sysdep-cancel.h>
 #include <sysdep.h>
 
-#ifndef __ACCESS
-# define __ACCESS __access
-#endif
-
 /* Test for access to FILE.  */
 int
-__ACCESS (const char *file, int type)
+__access_noerrno (const char *file, int type)
 {
-#ifndef NOERRNO
-  return INLINE_SYSCALL (faccessat, 3, AT_FDCWD, file, type);
-#else
   INTERNAL_SYSCALL_DECL (err);
   int res;
-  res = INTERNAL_SYSCALL (faccessat, err, 3, AT_FDCWD, file, type);
+  res = INTERNAL_SYSCALL (access, err, 2, file, type);
   if (INTERNAL_SYSCALL_ERROR_P (res, err))
     return INTERNAL_SYSCALL_ERRNO (res, err);
   else
     return 0;
-#endif
 }
-#ifndef NOERRNO
-weak_alias (__access, access)
-#endif
